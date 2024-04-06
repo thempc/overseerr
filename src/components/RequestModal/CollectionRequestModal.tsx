@@ -17,6 +17,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { defineMessages, useIntl } from 'react-intl';
 import { useToasts } from 'react-toast-notifications';
 import useSWR from 'swr';
+import { ANIME_KEYWORD_ID } from '@server/api/themoviedb/constants';
+import type { MovieDetails } from '@server/models/Movie';
 
 const messages = defineMessages({
   requestadmin: 'This request will be approved automatically.',
@@ -184,11 +186,13 @@ const CollectionRequestModal = ({
       let overrideParams = {};
       if (requestOverrides) {
         overrideParams = {
-          serverId: requestOverrides.server,
-          profileId: requestOverrides.profile,
-          rootFolder: requestOverrides.folder,
+          // TODO: Disabled these overrides as they aren't configurable through the modal
+          //  Only the user id is an option, the rest defaults to the default radarr instance
+          //serverId: requestOverrides.server,
+          //profileId: requestOverrides.profile,
+          //rootFolder: requestOverrides.folder,
           userId: requestOverrides.user?.id,
-          tags: requestOverrides.tags,
+          //tags: requestOverrides.tags,
         };
       }
 
@@ -196,10 +200,16 @@ const CollectionRequestModal = ({
         (
           data?.parts.filter((part) => selectedParts.includes(part.id)) ?? []
         ).map(async (part) => {
+          const movieData = await axios.get<MovieDetails>(`/api/v1/movie/${part.id}`);
+          const isAnime = movieData.data.keywords.some(
+            (keyword) => keyword.id === ANIME_KEYWORD_ID
+          );
+
           await axios.post<MediaRequest>('/api/v1/request', {
             mediaId: part.id,
             mediaType: 'movie',
             is4k,
+            isAnime,
             ...overrideParams,
           });
         })
